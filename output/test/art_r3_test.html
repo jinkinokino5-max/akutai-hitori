@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>art_r3 単体確認</title>
+<style>
+  body { margin: 0; background: #05060f; color: #e8f0ff; font: 14px sans-serif; padding: 12px; }
+  canvas { width: min(960px, 100%); aspect-ratio: 16/9; image-rendering: pixelated; display: block; background: #000; }
+  .bar { margin: 8px 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  button { background: #1b2350; color: #e8f0ff; border: 1px solid #3a4068; padding: 4px 10px; cursor: pointer; }
+  button.on { background: #ff2e88; }
+</style>
+</head>
+<body>
+<canvas id="c" width="320" height="180"></canvas>
+<div class="bar" id="modes"></div>
+<div class="bar">
+  <label>speed / p <input id="v" type="range" min="0" max="100" value="30"></label> <span id="vv"></span>
+  <label><input id="auto" type="checkbox" checked> 値を自動で往復</label>
+  <span id="info"></span>
+</div>
+<script src="../src/core.js"></script>
+<script>
+  // art_common.js は別担当。あれば使う（なくても art_r3 は自前ヘルパーで動く）
+  document.write('<script src="../src/art_common.js" onerror="console.info(\'art_common.js なし: 自前ヘルパーで描画\')"><\/script>');
+</script>
+<script src="../src/art_r3.js"></script>
+<script>
+(function () {
+  var cv = document.getElementById('c'), ctx = cv.getContext('2d');
+  var modes = ['walk', 'attack', 'plane', 'world', 'door S', 'door A', 'door B', 'door C'];
+  var mode = (location.hash.slice(1) || 'world').replace('_', ' ');
+  var box = document.getElementById('modes'), v = document.getElementById('v');
+  modes.forEach(function (m) {
+    var b = document.createElement('button'); b.textContent = m;
+    b.onclick = function () { mode = m; location.hash = m.replace(' ', '_'); sync(); };
+    box.appendChild(b);
+  });
+  function sync() { [].forEach.call(box.children, function (b) { b.className = b.textContent === mode ? 'on' : ''; }); }
+  sync();
+  var t0 = performance.now(), scroll = 0, last = 0, ft = 0;
+  function loop(now) {
+    var t = (now - t0) / 1000, dt = Math.min(0.1, t - last); last = t;
+    if (document.getElementById('auto').checked) v.value = Math.round(50 - 50 * Math.cos(t * 0.35));
+    var val = +v.value; document.getElementById('vv').textContent = val;
+    var a = performance.now();
+    ctx.fillStyle = '#0a0b1e'; ctx.fillRect(0, 0, 320, 180);
+    var R = AT.ART.r3;
+    if (mode === 'walk') { scroll += dt * 40; R.walk.draw(ctx, scroll, t); }
+    else if (mode === 'attack') { R.walk.draw(ctx, scroll, t); R.attacker.draw(ctx, t, val / 100); }
+    else if (mode === 'plane') { R.walk.draw(ctx, scroll, t); R.attacker.drawPlane(ctx, 160, 90, { big: true, scale: 3, frame: Math.floor(t * 4) }); R.attacker.drawPlane(ctx, 60, 40, { scale: 2, frame: Math.floor(t * 4) }); }
+    else if (mode === 'world') R.world.draw(ctx, t, val);
+    else AT.ART.ending.door.draw(ctx, mode.slice(-1), t);
+    ft = ft * 0.9 + (performance.now() - a) * 0.1;
+    document.getElementById('info').textContent = 'draw ' + ft.toFixed(1) + 'ms' + (AT.px && AT.px.make ? ' / art_common 使用' : ' / 自前ヘルパー');
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
