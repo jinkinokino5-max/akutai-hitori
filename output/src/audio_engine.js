@@ -42,8 +42,9 @@ window.AT = window.AT || {};
   }
 
   // ドラム文字列 → [{beat, kind}]。文字数で小節を等分。
-  // K=キック S=スネア H=ハット O=オープンハット X=キック+ハット Y=スネア+ハット .=休み
-  var DRUM_MAP = { K: ['kick'], S: ['snare'], H: ['hat'], O: ['ohat'], X: ['kick', 'hat'], Y: ['snare', 'hat'] };
+  // K=キック S=スネア H=ハット O=オープンハット X=キック+ハット Y=スネア+ハット Z=キック+スネア W=キック+スネア+ハット .=休み
+  // （Z/W は統合時に追加: songs_pomp の4つ打ち+2・4拍スネアの同時打ちを表すため）
+  var DRUM_MAP = { K: ['kick'], S: ['snare'], H: ['hat'], O: ['ohat'], X: ['kick', 'hat'], Y: ['snare', 'hat'], Z: ['kick', 'snare'], W: ['kick', 'snare', 'hat'] };
   function parseDrums(str, beatsPerBar) {
     var s = String(str).replace(/\s+/g, '');
     var out = [], step = beatsPerBar / s.length;

@@ -9,55 +9,79 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
 <style>
-  :root { --ink:#e8f0ff; --edge:#05060f; --mag:#ff2e88; }
+  :root { --ink:#e8f0ff; --edge:#05060f; --mag:#ff2e88; --accent:#ff2e88; --bw: min(100vw, calc(100vh * 16 / 9)); --bh: min(100vh, calc(100vw * 9 / 16)); }
+  @supports (height: 100dvh) {
+    :root { --bw: min(100vw, calc(100dvh * 16 / 9)); --bh: min(100dvh, calc(100vw * 9 / 16)); }
+  }
   html, body {
     margin: 0; height: 100%; background: #05060f; overflow: hidden; overscroll-behavior: none;
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
   }
-  /* 16:9 を保って中央配置。縦長でも伸ばさない */
-  canvas {
+  /* 16:9 を保って中央配置。縦長でも伸ばさない。#ui も同じ箱に重ねる（% 指定がキャンバス座標に対応する） */
+  canvas, #ui {
     position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
-    width: min(100vw, calc(100vh * 16 / 9)); height: min(100vh, calc(100vw * 9 / 16));
-    image-rendering: pixelated; touch-action: none;
+    width: var(--bw); height: var(--bh);
   }
-  @supports (height: 100dvh) {
-    canvas { width: min(100vw, calc(100dvh * 16 / 9)); height: min(100dvh, calc(100vw * 9 / 16)); }
-  }
-  /* 文字は画面解像度の HTML オーバーレイ */
+  canvas { image-rendering: pixelated; touch-action: none; }
+  /* 文字は画面解像度の HTML オーバーレイ。サイズは箱の幅(--bw)基準 */
   #ui {
-    position: fixed; inset: 0; pointer-events: none;
+    pointer-events: none; overflow: hidden;
     font-family: 'DotGothic16', 'BIZ UDPGothic', 'Yu Gothic', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
-    color: var(--ink);
+    color: var(--ink); font-size: calc(var(--bw) * 0.022);
     text-shadow: 0 0 2px var(--edge), 1px 1px 0 var(--edge), -1px -1px 0 var(--edge), 1px -1px 0 var(--edge), -1px 1px 0 var(--edge);
   }
-  #debug { position: absolute; left: 12px; top: 10px; font-size: 14px; opacity: .85; white-space: pre; }
-  #scene-name { position: absolute; left: 0; right: 0; top: 6vh; text-align: center; font-size: clamp(20px, 4vw, 44px); letter-spacing: .2em; }
-  #mono { position: absolute; left: 0; right: 0; top: 16vh; text-align: center; font-size: clamp(14px, 2.2vw, 24px); opacity: 0; transition: opacity .6s; }
-  #recall { position: absolute; left: 8vw; right: 8vw; top: 50%; transform: translateY(-50%); font-size: clamp(18px, 3vw, 32px); line-height: 1.9; text-align: left; }
-  #recall .ln::before { content: "─ "; }
+  #debug { position: absolute; left: 1%; top: 1%; font-size: 12px; opacity: .85; white-space: pre; }
+  #scene-name { position: absolute; left: 0; right: 0; top: 22%; text-align: center; font-size: calc(var(--bw) * 0.09); letter-spacing: .25em;
+    color: #fff; -webkit-text-stroke: .06em var(--mag); paint-order: stroke fill; text-shadow: 0 .05em 0 var(--edge); }
+  #scene-name .sub { display: block; font-size: .22em; letter-spacing: .3em; margin-top: .6em; -webkit-text-stroke: 0; color: var(--ink);
+    text-shadow: 0 0 2px var(--edge), 1px 1px 0 var(--edge), -1px -1px 0 var(--edge), 1px -1px 0 var(--edge), -1px 1px 0 var(--edge); }
+  /* 独り言: 主人公の頭上（left/top は scenes から指定） */
+  #mono { position: absolute; left: 25%; top: 62%; transform: translate(-30%, -100%); white-space: nowrap; font-size: calc(var(--bw) * 0.024);
+    opacity: 0; transition: opacity .8s; padding: .2em .6em; background: rgba(5,6,15,.45); border-radius: .3em; }
+  #recall { position: absolute; left: 10%; right: 8%; top: 50%; transform: translateY(-50%); font-size: calc(var(--bw) * 0.03); line-height: 1.85; text-align: left; }
+  #recall .ln::before { content: "─ "; opacity: .7; }
+  #recall .ln { opacity: .55; }
+  #recall .ln:last-child { opacity: 1; }
   #shout {
     position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); white-space: nowrap;
-    font-size: clamp(48px, 13vw, 160px); color: #fff; -webkit-text-stroke: .08em var(--mag); paint-order: stroke fill;
+    font-size: calc(var(--bw) * 0.11); color: #fff; -webkit-text-stroke: .08em var(--mag); paint-order: stroke fill;
     text-shadow: none; opacity: 0; letter-spacing: .05em;
   }
+  #shout.long { font-size: calc(var(--bw) * 0.075); }
   #shout.on { opacity: 1; animation: shake .09s infinite; }
   @keyframes shake {
     0%   { transform: translate(-50%,-50%) translate(-3px, 2px); }
     50%  { transform: translate(-50%,-50%) translate(3px, -2px); }
     100% { transform: translate(-50%,-50%) translate(-2px, -3px); }
   }
-  #judge { position: absolute; left: 0; right: 0; bottom: 24vh; text-align: center; font-size: clamp(20px, 4vw, 44px); opacity: 0; }
-  #meter { position: absolute; left: 4vw; right: 4vw; bottom: 3vh; height: 1.2vh; background: rgba(5,6,15,.6); border: 1px solid var(--ink); display: none; }
-  #meter i { display: block; height: 100%; width: 0; background: var(--mag); }
-  #ending { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 3vh; text-align: center; }
-  #ending .big { font-size: clamp(22px, 4vw, 44px); }
-  #ending .small { font-size: clamp(12px, 1.8vw, 18px); opacity: .8; }
-  #hint { position: absolute; left: 0; right: 0; bottom: 8vh; text-align: center; font-size: clamp(13px, 1.8vw, 18px); animation: blink 1.6s infinite; }
+  /* 判定文字（レーンの判定線の上） */
+  #judge { position: absolute; left: 44%; top: 70%; transform: translate(-50%, -50%); font-size: calc(var(--bw) * 0.045); opacity: 0; white-space: nowrap;
+    color: #fff; -webkit-text-stroke: .07em var(--edge); paint-order: stroke fill; text-shadow: none; letter-spacing: .05em; }
+  #judge.perfect { color: #fff; -webkit-text-stroke-color: var(--mag); }
+  #judge.good { color: var(--accent); }
+  #judge.miss { color: #8a93b8; }
+  #judge.pop { animation: pop .45s ease-out forwards; }
+  @keyframes pop {
+    0% { opacity: 1; transform: translate(-50%, -50%) scale(1.35); }
+    25% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -80%) scale(1); }
+  }
+  #combo { position: absolute; left: 44%; top: 60%; transform: translate(-50%, -50%); font-size: calc(var(--bw) * 0.022); opacity: 0; white-space: nowrap; }
+  /* 速度メーター（上部） */
+  #meter { position: absolute; left: 14%; right: 4%; top: 4%; height: 2.4%; background: rgba(5,6,15,.65); border: 1px solid var(--ink); display: none; }
+  #meter i { display: block; height: 100%; width: 0; background: var(--mag); box-shadow: 0 0 6px var(--mag); }
+  #meter b { position: absolute; right: 100%; top: 50%; transform: translateY(-50%); margin-right: .6em; font-weight: normal; font-size: calc(var(--bw) * 0.02); white-space: nowrap; }
+  #meter.max i { background: #fff; box-shadow: 0 0 10px #fff; }
+  #ending { position: absolute; left: 2%; right: 56%; top: 5%; display: none; flex-direction: column; align-items: center; gap: .9em; text-align: center; }
+  #ending .rank { font-size: calc(var(--bw) * 0.07); color: #fff; -webkit-text-stroke: .07em var(--mag); paint-order: stroke fill; text-shadow: none; line-height: 1; }
+  #ending .big { font-size: calc(var(--bw) * 0.028); line-height: 1.6; padding: .3em .6em; background: rgba(5,6,15,.55); border-radius: .3em; }
+  #ending .small { font-size: calc(var(--bw) * 0.017); opacity: .9; white-space: pre-line; line-height: 1.6; background: rgba(5,6,15,.45); padding: .2em .6em; border-radius: .3em; }
+  #hint { position: absolute; left: 0; right: 0; bottom: 13%; text-align: center; font-size: calc(var(--bw) * 0.02); animation: blink 1.6s infinite; }
   @keyframes blink { 0%,60%,100% { opacity: .9; } 80% { opacity: .3; } }
   #rotate { display: none; }
   @media (orientation: portrait) {
-    #rotate { display: block; position: absolute; left: 0; right: 0; bottom: 3vh; text-align: center; font-size: 15px; opacity: .9; }
-    #hint { bottom: 12vh; }
+    #rotate { display: block; position: fixed; left: 0; right: 0; bottom: 3vh; text-align: center; font-size: 15px; opacity: .9; color: #e8f0ff;
+      font-family: 'DotGothic16', sans-serif; pointer-events: none; }
   }
 </style>
 </head>
@@ -69,21 +93,29 @@
   <div id="mono"></div>
   <div id="recall"></div>
   <div id="shout"></div>
+  <div id="combo"></div>
   <div id="judge"></div>
-  <div id="meter"><i></i></div>
-  <div id="ending"><div class="big" id="end-line"></div><div class="small" id="end-stats"></div><div class="small" id="end-again"></div></div>
+  <div id="meter"><b>SPEED</b><i></i></div>
+  <div id="ending"><div class="rank" id="end-rank"></div><div class="big" id="end-line"></div><div class="small" id="end-stats"></div><div class="small" id="end-again"></div></div>
   <div id="hint"></div>
-  <div id="rotate">横向きにすると大きく遊べます</div>
 </div>
-<!-- クラシック script（ES modules は file:// で動かないため使わない）。読み込み順固定 -->
+<div id="rotate">横向きにすると大きく遊べます</div>
+<!-- クラシック script（ES modules は file:// で動かないため使わない）。読み込み順固定:
+     データ → core/input → 音(エンジン → 曲データ → 曲の橋渡し songs.js) → リズム → 絵(共通 → R1〜R3) → ui → scenes → main -->
 <script src="data/texts.js"></script>
 <script src="data/rounds.js"></script>
 <script src="src/core.js"></script>
 <script src="src/input.js"></script>
-<script src="src/audio.js"></script>
+<script src="src/audio_engine.js"></script>
+<script src="src/songs_tell.js"></script>
+<script src="src/songs_pomp.js"></script>
+<script src="src/songs_ode.js"></script>
 <script src="src/songs.js"></script>
-<script src="src/rhythm.js"></script>
-<script src="src/art.js"></script>
+<script src="src/rhythm_engine.js"></script>
+<script src="src/art_common.js"></script>
+<script src="src/art_r1.js"></script>
+<script src="src/art_r2.js"></script>
+<script src="src/art_r3.js"></script>
 <script src="src/ui.js"></script>
 <script src="src/scenes.js"></script>
 <script src="src/main.js"></script>
