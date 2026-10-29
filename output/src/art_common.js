@@ -163,10 +163,11 @@ window.AT = window.AT || {};
   G.disc = function (cx, cy, r, c, wrap) { this.ellipse(cx, cy, r, r, c, wrap); };
   G.ring = function (cx, cy, r, c, wrap) {
     var f = wrap ? this.setw : this.set;
-    var n = Math.max(8, Math.ceil(r * 7));
-    for (var i = 0; i < n; i++) {
-      var a = i / n * Math.PI * 2;
-      f.call(this, Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r), c);
+    // 距離が r±0.5 の画素（中点円に近い、角の立たない輪）
+    var R = Math.ceil(r + 1), lo = (r - 0.5) * (r - 0.5), hi = (r + 0.5) * (r + 0.5);
+    for (var y = -R; y <= R; y++) for (var x = -R; x <= R; x++) {
+      var d = x * x + y * y;
+      if (d >= lo && d < hi) f.call(this, Math.round(cx) + x, Math.round(cy) + y, c);
     }
   };
   // 多角形の塗り（偶奇規則）。pts = [[x,y],...]
