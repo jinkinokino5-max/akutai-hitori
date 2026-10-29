@@ -8,12 +8,15 @@ window.AT = window.AT || {};
   'use strict';
 
   var R = {
-    // 企画書§5の初期値（調整可）
+    // 企画書§5の初期値から増減値だけ調整（統合時）。
+    // 企画書の +4/+2/−3/−1/コンボ+5 だと全PERFECTで約12秒で100に届き、Eパート45〜75秒の想定より短すぎたため。
+    // node シミュレーション（偽の時計・3ラウンドのBPM）: 全PERFECT 46〜52秒 / 上手め(P70%G25%) 52〜61秒 /
+    // 普通(P50%G35%) 65〜74秒(多くは救済) / 放置 75秒。
     config: {
       perfect: 0.050, good: 0.110,          // 判定窓(秒, ±)
-      dPerfect: 4, dGood: 2, dMiss: -3, dEmpty: -1,
+      dPerfect: 0.75, dGood: 0.65, dMiss: -0.25, dEmpty: -0.15,
       decayPerSec: 1, idleSec: 1.0,         // 最後の入力から idleSec 秒たつと毎秒 decayPerSec 減る
-      comboEvery: 10, comboBonus: 5,
+      comboEvery: 10, comboBonus: 1,
       eighthAt: 60,                         // 以上で小節後半2拍が8分
       rushAt: 90, rushBars: 2,              // 以上で全部8分（最低 rushBars 小節続く）
       rescueAt: 60, rescueEnd: 75,          // 救済開始/必ず100に届く秒
