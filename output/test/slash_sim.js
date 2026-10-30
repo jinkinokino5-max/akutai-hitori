@@ -38,9 +38,9 @@ function intentModel(pJust, pGood, pWhiffOfFail) {
         }
         if (t._done) return false;
         var d = t.x - C.bikeX;
-        var thr = t._intent === 'just' ? C.reach - 1
-                : t._intent === 'good' ? C.reach - C.justWidth - 5
-                : t._intent === 'whiff' ? C.reach + 22 : -1e9;
+        var thr = t._intent === 'just' ? S.reachNow() - 1
+                : t._intent === 'good' ? S.reachNow() - S.justWidthNow() - 5
+                : t._intent === 'whiff' ? S.reachNow() + 22 : -1e9;
         if (d <= thr) {
           var res = S.slash();
           if (res !== 'blocked') t._done = true;

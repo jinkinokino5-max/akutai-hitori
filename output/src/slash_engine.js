@@ -14,22 +14,25 @@
     bikeX: 110,                   // 自転車の x
     spawnMargin: 12,              // 画面右端のこれだけ外で生まれる
     // --- 刀の間合い（自転車の x からの距離 d = obstacle.x - bikeX） ---
-    reach: 24,                    // 先端。d <= reach で斬れる
+    reach: 24,                    // 先端（速度0のとき）。d <= reachNow() で斬れる
+    reachPerSpeed: 0.14,          // 速いほど間合いが伸びる（速度100で+14px）。流れが速くなっても斬れる猶予が極端に縮まらないように
     justWidth: 6,                 // 先端からこの幅が JUST
     bodyX: 6,                     // d <= bodyX で衝突
     // --- 判定表（プラン§2-2） ---
-    just:  { speed: 7,  dark: -0.06, hitstop: 0.06 },
-    good:  { speed: 4,  dark: -0.02, hitstop: 0.03 },
+    just:  { speed: 5,  dark: -0.06, hitstop: 0.05 },
+    good:  { speed: 3,  dark: -0.02, hitstop: 0.03 },
     whiffCooldown: 0.25,          // 空振りの硬直(秒)。この間は斬れない
     whiff: { speed: -1.5, dark: 0.01 },   // 空振りの追加ペナルティ（プラン表は0だが、連打が上手い人と並ぶため小さく足した。0にすれば表どおり）
     crash: { speed: -6.5, dark: 0.04, stun: 0.45 },   // stun: よろけ(秒)。この間も斬れない
     // --- 速度（0〜100） ---
     speedStart: 40,
-    speedDecay: 0.9,              // 毎秒の自然低下
+    speedDecay: 0.6,              // 毎秒の自然低下
+    speedDecayPerSpeed: 0.015,    // 速いほど減りやすい（速度100で毎秒+1.5）。加速が青天井にならず、上手く斬り続けた人だけがトップへ届く
+    topSpeed: 97,                 // 速度がここに届いたら「トップスピード」: 主人公が画面右へ消え去り、白い光が飛んで逃げ切り
     speedDecayPerRound: 0.2,      // ラウンドごとの上乗せ
     comboStep: 5,                 // コンボ何ごとに加速量が増えるか
-    comboMulStep: 0.2,            // 1段あたりの倍率増（×1.2, ×1.4 ...）
-    comboMulMax: 2.0,             // 倍率の上限
+    comboMulStep: 0.25,           // 1段あたりの倍率増（×1.25, ×1.5 ...×2.0で頭打ち）
+    comboMulMax: 2.0,              // 倍率の上限
     // --- 闇（幅 0〜1。darkLimit を超えたら呑まれる） ---
     darkLimit: 1 / 3,
     darkStart: 0.075,
@@ -38,16 +41,21 @@
     darkRetreat: 0.0,             // 速度が safe を超えたとき毎秒減る幅の上限(0=減らない)
     darkRatePerRound: 0.0025,      // ラウンドごとの上乗せ
     // --- 流れる速さ（px/秒）= (scrollBase + speed*scrollPerSpeed) * (1 + scrollPerRound*round) ---
-    scrollBase: 70, scrollPerSpeed: 0.9, scrollPerRound: 0.08,
+    scrollBase: 70, scrollPerSpeed: 1.3, scrollPerRound: 0.08,
     // --- 出現表 ---
     kinds: ['a', 'b', 'c'],
-    gapBase: [175, 155, 125],     // ラウンドごとの基準間隔(px)
+    gapBase: [165, 145, 118],     // ラウンドごとの基準間隔(px)
     gapJitter: 0.3,               // ±割合
     gapSpeedShrink: 0.25,         // 速度100で間隔がこの割合だけ詰まる
+    gapTimeShrink: 0.3,           // 時間が経つにつれ間隔が詰まる（ラウンド終盤でこの割合）。障害物がだんだん多量に来る
     gapMin: 64,
-    pairChance: [0.16, 0.21, 0.33],   // 2連続の確率
+    pairChance: [0.16, 0.21, 0.33],   // 2連続の確率（ラウンドごとの基準）
+    pairTimeBonus: 0.22,          // 終盤で2連続・3連続の確率に足される量
+    tripleChance: 0.35,           // 2連続になったとき、さらに3つ目が続く確率の最大値（終盤にかけて 0→この値）
     pairGap: 44,                  // 2連続の2つ目までの間隔(px)
-    planLength: 120               // 出現表の長さ（40秒に十分な数）
+    pairGapJitter: 8,             // 連続の間隔のばらつき(±px)。リズムが単調にならないように
+    rampTime: 40,                 // 難易度が「終盤」に達するまでの秒数（duration は scenes が曲の長さで差し替えるので別に持つ）
+    planLength: 120               // 出現表の長さ（spawnPlan の確認用。実プレイの出現は update 中に乱数で決める）
   };
 
   var EVENTS = ['just', 'good', 'miss', 'crash', 'swallow', 'comboUp', 'spawn', 'end'];
@@ -93,13 +101,13 @@
     obstacles: [],          // {id, x, kind, slashed, hit('just'|'good'|null), crashed}
     cooldown: 0, stunned: 0, hitstop: 0,
     time: 0,
-    status: 'idle',         // 'idle' | 'running' | 'escaped' | 'swallowed'
+    status: 'idle',         // 'idle' | 'running' | 'escaped' | 'topspeed'(トップスピード到達=逃げ切りの一種) | 'swallowed'
     stats: null,
     // 描画側の補助（読み取り用）
     scroll: 0,              // 現在の流れる速さ(px/秒)
     distance: 0             // 走った距離(px)。背景スクロール用
   };
-  var plan = [], planIdx = 0, sinceSpawn = 0, nextGap = 0, nextId = 1, darkSum = 0, darkT = 0;
+  var rnd = rng(1), queue = [], sinceSpawn = 0, nextGap = 0, nextId = 1, darkSum = 0, darkT = 0;
 
   function emit(name, arg) {
     var l = cbs[name];
@@ -121,6 +129,11 @@
   function comboMul() {
     return Math.min(C.comboMulMax, 1 + C.comboMulStep * Math.floor(S.combo / C.comboStep));
   }
+  // 時間がたつほど 0→1（障害物の密度・連続の確率を上げる）
+  function progress() { return clamp(S.time / C.rampTime, 0, 1); }
+  // 刀の間合い。速いほど少し伸びる（流れが速くなっても斬れる時間をほぼ保つ）
+  function reachNow() { return C.reach + C.reachPerSpeed * S.speed; }
+  function justWidthNow() { return C.justWidth * reachNow() / C.reach; }
   function scrollSpeed() {
     return (C.scrollBase + S.speed * C.scrollPerSpeed) * (1 + C.scrollPerRound * S.round);
   }
@@ -136,20 +149,37 @@
     S.cooldown = 0; S.stunned = 0; S.hitstop = 0; S.time = 0; S.distance = 0;
     S.status = 'running';
     S.stats = { slashed: 0, just: 0, good: 0, whiff: 0, crash: 0, spawned: 0, closest: 1 };
-    plan = spawnPlan(S.round, S.seed); planIdx = 0; nextId = 1;
+    rnd = rng((S.seed >>> 0) + S.round * 7919); queue = []; nextId = 1;
     sinceSpawn = 0; nextGap = 150;      // 最初の1つは自転車から十分離れて出る
     darkSum = 0; darkT = 0;
     S.scroll = scrollSpeed();
     return S;
   };
 
+  // 次の障害物までの間隔を決める。時間・速度で詰まり、ばらつきは毎回の乱数（プレイごとに違う並びになる）
+  function pickGap() {
+    var r = Math.max(0, Math.min(C.gapBase.length - 1, S.round));
+    var base = C.gapBase[r] * (1 + (rnd() * 2 - 1) * C.gapJitter);
+    var shrink = 1 - C.gapSpeedShrink * S.speed / 100 - C.gapTimeShrink * progress();
+    return Math.max(C.gapMin, base * Math.max(0.35, shrink));
+  }
+
   function spawnOne() {
-    var p = plan[planIdx % plan.length]; planIdx++;
-    var o = { id: nextId++, x: C.W + C.spawnMargin, kind: p.kind, slashed: false, hit: null, crashed: false };
+    var kind;
+    if (queue.length) {                 // 連続の続き（kind を連続で同じにしすぎない）
+      kind = queue.shift();
+    } else {
+      kind = C.kinds[Math.floor(rnd() * C.kinds.length)];
+      var r = Math.max(0, Math.min(C.pairChance.length - 1, S.round)), pg = progress();
+      if (rnd() < C.pairChance[r] + C.pairTimeBonus * pg) {
+        queue.push(C.kinds[Math.floor(rnd() * C.kinds.length)]);
+        if (rnd() < C.tripleChance * pg) queue.push(C.kinds[Math.floor(rnd() * C.kinds.length)]);
+      }
+    }
+    var o = { id: nextId++, x: C.W + C.spawnMargin, kind: kind, slashed: false, hit: null, crashed: false };
     S.obstacles.push(o);
     S.stats.spawned++;
-    var nxt = plan[planIdx % plan.length];
-    nextGap = nxt.pair ? C.pairGap : Math.max(C.gapMin, nxt.gap * (1 - C.gapSpeedShrink * S.speed / 100));
+    nextGap = queue.length ? Math.max(C.gapMin * 0.6, C.pairGap + (rnd() * 2 - 1) * C.pairGapJitter) : pickGap();
     sinceSpawn = 0;
     emit('spawn', o);
   }
@@ -160,6 +190,7 @@
   function finish(status) {
     if (S.status !== 'running') return;
     S.status = status;
+    if (status === 'topspeed') S.stats.topSpeed = true;
     if (status === 'swallowed') emit('swallow', { time: S.time, dark: S.dark });
     emit('end', { status: status, result: S.result() });
   }
@@ -177,7 +208,7 @@
     S.stunned = Math.max(0, S.stunned - dt);
 
     // 速度の自然低下
-    addSpeed(-(C.speedDecay + C.speedDecayPerRound * S.round) * dt);
+    addSpeed(-(C.speedDecay + C.speedDecayPerRound * S.round + C.speedDecayPerSpeed * S.speed) * dt);
     // 闇の幅: 速度が低いほど増える
     var rate = (C.darkRate + C.darkRatePerRound * S.round) * (1 - S.speed / C.darkSafeSpeed);
     if (rate < -C.darkRetreat) rate = -C.darkRetreat;
@@ -215,6 +246,7 @@
     if (dist < S.stats.closest) S.stats.closest = dist;
     darkSum += dist * dt; darkT += dt;
     if (S.dark > C.darkLimit) { finish('swallowed'); return S; }
+    if (S.speed >= C.topSpeed) { finish('topspeed'); return S; }
     if (S.time >= C.duration) finish('escaped');
     return S;
   };
@@ -228,7 +260,7 @@
       o = S.obstacles[i];
       if (o.slashed || o.crashed) continue;
       var d = o.x - C.bikeX;
-      if (d <= C.reach && d > C.bodyX && (!target || o.x < target.x)) target = o;
+      if (d <= reachNow() && d > C.bodyX && (!target || o.x < target.x)) target = o;
     }
     if (!target) {
       S.cooldown = C.whiffCooldown;
@@ -238,7 +270,7 @@
       emit('miss', { speed: S.speed });
       return 'miss';
     }
-    var isJust = (target.x - C.bikeX) >= C.reach - C.justWidth;
+    var isJust = (target.x - C.bikeX) >= reachNow() - justWidthNow();
     var tbl = isJust ? C.just : C.good;
     target.slashed = true; target.hit = isJust ? 'just' : 'good';
     S.stats.slashed++;
@@ -262,7 +294,7 @@
     var justRate = st.slashed ? st.just / st.slashed : 0;
     var avgDist = darkT > 0 ? darkSum / darkT : 1;
     return {
-      status: S.status, escaped: S.status === 'escaped', swallowed: S.status === 'swallowed',
+      status: S.status, escaped: S.status === 'escaped' || S.status === 'topspeed', topSpeed: S.status === 'topspeed', swallowed: S.status === 'swallowed',
       time: S.time, speed: S.speed,
       slashRate: slashRate, justRate: justRate, crashes: st.crash,
       slashed: st.slashed, just: st.just, good: st.good, whiffs: st.whiff,
@@ -271,6 +303,8 @@
     };
   };
 
+  S.reachNow = reachNow;
+  S.justWidthNow = justWidthNow;
   AT.slash = S;
   if (typeof module !== 'undefined' && module.exports) module.exports = S;
 })(typeof window !== 'undefined' ? window : global);

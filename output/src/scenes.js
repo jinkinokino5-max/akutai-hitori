@@ -15,6 +15,7 @@
   var scroll = 0;       // 前景の進んだ距離(px)
   var walkT = 0;        // 帰り道〜回顧で使う絵の時刻（回顧ではスローで進む）
   var audioUnlocked = false;
+  var launchWhite = 0;  // launch → flash の引き継ぎ（launch 終了時の白さ。0 なら通常の白光）
 
   var S = AT.slash, SC = AT.slash.config, OB = AT.ART.obstacles;
   var DEFAULT_DURATION = SC.duration;   // 逃げ切りは曲の時間で決めるので、疾走中だけ engine の duration を外す
@@ -141,7 +142,7 @@
     if (!opts.noObstacles) {
       for (var i = 0; i < S.obstacles.length; i++) {
         var o = S.obstacles[i], d = o.x - SC.bikeX;
-        OB.drawObstacle(c, rd, o.kind, obstacleSpriteX(o), gy, { t: T, glow: (d > SC.bodyX && d <= SC.reach) ? 1 : 0 });
+        OB.drawObstacle(c, rd, o.kind, obstacleSpriteX(o), gy, { t: T, glow: (d > SC.bodyX && d <= S.reachNow()) ? 1 : 0 });
       }
       for (var j = 0; j < R.cuts.length; j++) OB.drawObstacle(c, rd, R.cuts[j].kind, R.cuts[j].x, gy, { t: T, cut: R.cuts[j].p });
     }
@@ -389,7 +390,7 @@
           AT.ui.judge('crash'); AT.ui.combo(0);
         });
         S.on('end', function (e) {
-          if (e.status === 'escaped') AT.state.results[idx] = e.result;
+          if (e.status === 'escaped' || e.status === 'topspeed') AT.state.results[idx] = e.result;
         });
         S.start(idx, { seed: (Math.random() * 1e9) >>> 0 });
         if (a.playMusic) a.playMusic(r.music.run, { xfade: 0.05, fadeIn: 0.05 });
@@ -426,7 +427,7 @@
         // 構え: 次の障害物が間合いの少し手前まで来たら
         if (R.rider.st === 'run' || R.rider.st === 'ready') {
           var near = false;
-          for (var j = 0; j < S.obstacles.length; j++) { var dd = S.obstacles[j].x - SC.bikeX; if (dd > SC.bodyX && dd <= SC.reach + 20) near = true; }
+          for (var j = 0; j < S.obstacles.length; j++) { var dd = S.obstacles[j].x - SC.bikeX; if (dd > SC.bodyX && dd <= S.reachNow() + 20) near = true; }
           R.rider = { st: near ? 'ready' : 'run', p: 0, dur: 0 };
         }
         R.flashK = Math.max(0, R.flashK - dt / 0.08);
@@ -438,7 +439,8 @@
         if (t > 4) AT.ui.hint('');
         // 色相回転（コンボ20以上）
         setFilter(S.combo >= 20 ? 'hue-rotate(' + Math.round((T * 300) % 360) + 'deg) saturate(1.3)' : '');
-        if (S.status === 'escaped') go('flash');
+        if (S.status === 'topspeed') go('launch');
+        else if (S.status === 'escaped') go('flash');
         else if (S.status === 'swallowed') go('swallow');
       },
       draw: function (c) {
@@ -526,6 +528,69 @@
       }
     },
 
+    // E'' トップスピード到達: 主人公が画面右へ加速しながら消え去り、白い光が飛んで白光へ。
+    // 世界は最高速で流れ続ける。乗り手は右端を越えたあと、残った光の筋だけが右へ走り、画面が白に染まる。
+    launch: {
+      DUR: 1.9, GONE: 1.05,
+      enter: function () {
+        setFilter('');
+        this.sc = scroll; this.T0 = T; this.x = RIDER_X; this.sparks = [];
+        R.parts = []; R.cuts = [];
+        AT.ui.hint('');
+        sfx('flash', { vol: 0.5, rate: 1.4 });
+        if (audio().loopStop) audio().loopStop('dark_loop', 0.3);
+        launchWhite = 0;
+        this.next = AT.state.round + 1;
+        if (this.next < AT.ROUNDS.length) art(this.next).preload();
+      },
+      update: function (dt) {
+        this.sc += 420 * dt; scroll = this.sc;
+        var k = clamp(t / this.GONE, 0, 1);
+        this.x = RIDER_X + (W + 60 - RIDER_X) * k * k * k;          // 立ち上がりはゆっくり、最後は一気に
+        var gy = art().runGround - 14;
+        if (t < this.GONE) {
+          for (var i = 0; i < 2; i++) this.sparks.push({ x: this.x + 8, y: gy + (Math.random() - 0.5) * 10, vx: 200 + Math.random() * 300, l: 0.35 });
+        } else if (t < this.GONE + 0.25) {                           // 画面外へ出た瞬間に白い光が右へ飛ぶ
+          for (var j = 0; j < 4; j++) this.sparks.push({ x: W - 10, y: gy + (Math.random() - 0.5) * 18, vx: 500 + Math.random() * 500, l: 0.5 });
+        }
+        for (var q = this.sparks.length - 1; q >= 0; q--) {
+          var sp = this.sparks[q]; sp.x += sp.vx * dt; sp.l -= dt;
+          if (sp.l <= 0) this.sparks.splice(q, 1);
+        }
+        if (t >= this.DUR) go('flash');
+      },
+      draw: function (c) {
+        var gy = art().runGround, g2 = gy - 14, k = clamp(t / this.GONE, 0, 1), i;
+        art().world(c, this.sc, T, 100);
+        if (this.x < W + 40) {
+          // 乗り手の後ろに伸びる光の筋（速いほど長い）
+          var len = 10 + 140 * k * k;
+          c.fillStyle = 'rgba(255,255,255,0.3)';
+          for (i = 0; i < 4; i++) c.fillRect(Math.round(this.x + 2 - len), Math.round(g2 - 10 + i * 7), Math.round(len), 1);   // 乗り手の背中より後ろだけ
+          OB.drawRider(c, Math.round(this.x), gy, 'run', T, 1, 0, { round: rid() });
+        }
+        c.fillStyle = '#ffffff';
+        for (i = 0; i < this.sparks.length; i++) {
+          var sp = this.sparks[i];
+          c.globalAlpha = clamp(sp.l * 3, 0, 1);
+          c.fillRect(Math.round(sp.x - 14), Math.round(sp.y), 14, 1);   // 飛ぶ光は横に長い筋
+        }
+        c.globalAlpha = 1;
+        // 白い光そのもの: 右端から走る太い一閃（画面外へ消えるまで）
+        var lt = t - this.GONE;
+        if (lt >= 0) {
+          var lx = W - 10 + lt * 900, lw = 40 + lt * 600;
+          c.fillStyle = '#ffffff';
+          c.fillRect(Math.round(lx - lw), Math.round(g2 - 2), Math.round(lw), 4);
+          c.fillRect(Math.round(lx - lw * 0.6), Math.round(g2 - 7), Math.round(lw * 0.6), 14);
+          // 光が通ったあとから画面が白に染まる
+          launchWhite = clamp((lt - 0.2) / (this.DUR - this.GONE - 0.2), 0, 1);
+          c.fillStyle = 'rgba(255,255,255,' + (launchWhite * launchWhite).toFixed(3) + ')';
+          c.fillRect(0, 0, W, H);
+        }
+      }
+    },
+
     // F 白光: 0.3秒で白 → 1秒保持 → 1.5秒で夜道（次ラウンド）/ 玄関（結末）へフェード。白光の効果音（大）
     flash: {
       enter: function () {
@@ -535,6 +600,7 @@
         if (a.loopStop) a.loopStop('dark_loop', 0.2);
         sfx('flash');
         this.frozenScroll = scroll; this.frozenT = T;
+        this.w0 = launchWhite * launchWhite; launchWhite = 0;   // launch から来たときは白いところから始める
         this.next = AT.state.round + 1;
         if (this.next < AT.ROUNDS.length) art(this.next).preload();
         else this.grade = grade();
@@ -550,7 +616,7 @@
         var white;
         if (t < 0.3) {
           art().world(c, this.frozenScroll, this.frozenT, 100);
-          white = t / 0.3;
+          white = Math.max(this.w0, t / 0.3);
         } else if (t < 1.3) {
           white = 1;
         } else {
