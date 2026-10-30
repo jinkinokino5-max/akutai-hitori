@@ -59,8 +59,8 @@
       preload: function () {},
       walk: function (c, s, tt) { AT.ART.r3.walk.draw(c, s, tt); },
       attack: function (c, p, tt, tx, ty) { AT.ART.r3.attacker.draw(c, tt, p, { tx: tx, ty: ty }); },
-      // 一点透視の廊下は距離の単位が「奥行き」。疾走の流れ(px)を 1/16 にして渡す（速度50で絵本来の前進速度とほぼ同じ）
-      world: function (c, s, tt, sp) { AT.ART.r3.world.draw(c, tt, sp, { dist: s / 16 }); },
+      // 疾走は横スクロール（側面図）の廊下。背景は画面の左へ流れる（一点透視の drawWorld は向きが合わないので使わない）
+      world: function (c, s, tt, sp) { AT.ART.r3.world.drawSide(c, s, tt, sp); },
       reset: function () { AT.ART.r3.world.reset(); }
     }
   };

@@ -404,6 +404,112 @@ window.AT = window.AT || {};
   }
 
   // =====================================================================
+  // 疾走用の横スクロール廊下（側面図）。背景は画面の左へ流れる（自転車は右向きに走る）。
+  // 構図: 奥の壁（教室側）は床 y=132 で終わり、乗り手と障害物は手前の床の上 (地面 y=160) を走る。
+  //  - 壁と天井は奥にあるので 0.75 倍の速さで流れる（視差）。床の目地は奥 0.75 倍〜手前 1.15 倍で、
+  //    地面 y=160 の行がちょうど 1 倍（障害物と同じ速さ）になるように斜めに描く。
+  //  - 障害物（灰・銀色）が埋もれないよう、背景は暗く低コントラストに抑える。扉は乗り手の約 2.3 倍の高さ。
+  // =====================================================================
+  var SIDE_GROUND = 160, SIDE_FLOOR = 132, SIDE_PERIOD = 320, SIDE_PAR = 0.75;
+  var SIDE_WALL = lazy(function () {
+    var c = newCanvas(SIDE_PERIOD, SIDE_FLOOR), x = c.getContext('2d'), i, k;
+    x.fillStyle = '#06071a'; x.fillRect(0, 0, SIDE_PERIOD, 30);                     // 天井
+    x.fillStyle = '#0c0f2c'; x.fillRect(0, 30, SIDE_PERIOD, 2);                     // 廻り縁
+    x.fillStyle = '#111536'; x.fillRect(0, 32, SIDE_PERIOD, SIDE_FLOOR - 32);        // 壁
+    x.fillStyle = '#0d1030'; x.fillRect(0, 60, SIDE_PERIOD, 1);                     // 欄間の下の見切り
+    // 欄間（扉・窓の上に続く細長いガラス）x=10..196
+    x.fillStyle = '#070818'; x.fillRect(10, 38, 186, 20);
+    x.fillStyle = '#0d1534'; x.fillRect(11, 39, 184, 18);
+    x.fillStyle = '#070818'; for (i = 11; i < 196; i += 23) x.fillRect(i, 39, 1, 18);
+    x.fillStyle = '#18224a'; x.fillRect(11, 39, 184, 1);
+    // 教室の引き戸（窓つき）x=16, 158  幅34 高さ50
+    [16, 158].forEach(function (dx) {
+      x.fillStyle = '#070818'; x.fillRect(dx - 1, 81, 36, SIDE_FLOOR - 81);
+      x.fillStyle = '#1b2046'; x.fillRect(dx, 82, 34, SIDE_FLOOR - 82);
+      x.fillStyle = '#141838'; x.fillRect(dx + 17, 82, 1, SIDE_FLOOR - 82);          // 戸の合わせ目
+      x.fillStyle = '#0c1330'; x.fillRect(dx + 4, 88, 10, 16); x.fillRect(dx + 21, 88, 10, 16);
+      x.fillStyle = '#2c3a66'; x.fillRect(dx + 4, 88, 10, 1); x.fillRect(dx + 21, 88, 10, 1);
+      x.fillStyle = '#4a4434'; x.fillRect(dx + 14, 108, 1, 4);                       // 取っ手
+      x.fillStyle = '#5c5a4a'; x.fillRect(dx + 9, 66, 16, 5);                        // 組札
+      x.fillStyle = '#34342c'; x.fillRect(dx + 11, 68, 12, 1);
+    });
+    // 教室の腰窓（廊下側）x=62..146
+    x.fillStyle = '#070818'; x.fillRect(61, 71, 86, 34);
+    x.fillStyle = '#0b1230'; x.fillRect(62, 72, 84, 32);
+    x.fillStyle = '#070818'; x.fillRect(103, 72, 2, 32); x.fillRect(62, 87, 84, 1);
+    x.fillStyle = '#080c22';                                                         // ガラス越しの机と椅子の影
+    for (i = 0; i < 5; i++) { x.fillRect(66 + i * 16, 96, 10, 2); x.fillRect(68 + i * 16, 98, 1, 6); x.fillRect(74 + i * 16, 98, 1, 6); }
+    x.fillStyle = '#1e2a58'; x.fillRect(62, 72, 84, 1); x.fillRect(64, 74, 1, 10); x.fillRect(107, 74, 1, 10);   // 月明かりの反射（ごく弱く）
+    x.fillStyle = '#161b40'; x.fillRect(60, 105, 88, 2);                            // 窓台
+    // 掃除当番表と掲示板 x=214..272
+    x.fillStyle = '#2a2420'; x.fillRect(214, 70, 34, 24);
+    x.fillStyle = '#5e5a48'; x.fillRect(216, 72, 12, 9); x.fillRect(230, 73, 15, 7); x.fillRect(218, 83, 20, 8);
+    x.fillStyle = '#3e3c32'; x.fillRect(218, 75, 8, 1); x.fillRect(232, 75, 10, 1); x.fillRect(220, 86, 14, 1);
+    x.fillStyle = '#4a4636'; x.fillRect(256, 76, 14, 18);
+    x.fillStyle = '#2e2c24'; for (k = 0; k < 4; k++) x.fillRect(258, 79 + k * 4, 10, 1);
+    // 消火栓の箱（赤は暗く。障害物と見間違えないよう壁の高い位置）x=284
+    x.fillStyle = '#3a1418'; x.fillRect(284, 84, 18, 24);
+    x.fillStyle = '#5a1e22'; x.fillRect(284, 84, 18, 1);
+    x.fillStyle = '#7a3a2a'; x.fillRect(291, 88, 4, 4);
+    // 非常口の緑の灯 x=230
+    x.fillStyle = '#0a2a1e'; x.fillRect(228, 42, 18, 8);
+    x.fillStyle = '#3ec88a'; x.fillRect(230, 44, 14, 4);
+    x.fillStyle = '#0a2a1e'; x.fillRect(232, 45, 3, 2);
+    // 幅木
+    x.fillStyle = '#0a0b20'; x.fillRect(0, SIDE_FLOOR - 6, SIDE_PERIOD, 6);
+    x.fillStyle = '#1c2150'; x.fillRect(0, SIDE_FLOOR - 6, SIDE_PERIOD, 1);
+    return c;
+  });
+  // 床の各行の流れる倍率（奥 y=132 で 0.75、地面 y=160 で 1、手前 y=180 で約 1.18）
+  function sideFloorK(y) { return SIDE_PAR + (1 - SIDE_PAR) * (y - SIDE_FLOOR) / (SIDE_GROUND - SIDE_FLOOR); }
+  function drawSideWorld(ctx, dist, t, speed) {
+    crisp(ctx);
+    var wd = dist * SIDE_PAR, off = Math.round(mod(wd, SIDE_PERIOD)), x, y, i;
+    for (x = -off; x < W; x += SIDE_PERIOD) ctx.drawImage(SIDE_WALL(), x, 0);     // 背景は左へ流れる
+    // 蛍光灯（天井、80px おき。ときどきまたたく）
+    var lo = Math.round(mod(wd, 80)), lit = [];
+    for (x = -lo - 80; x < W + 80; x += 80) {
+      var id = Math.round((x + wd) / 80), ph = mod(t * 3 + id * 1.7, 9);
+      var on = !(ph > 8.2 && ph < 8.5);
+      ctx.fillStyle = '#05060f'; ctx.fillRect(x + 18, 24, 44, 4);
+      ctx.fillStyle = on ? '#cfd8f4' : '#3a4060'; ctx.fillRect(x + 20, 25, 40, 2);
+      if (on) {   // 下へ広がりながら薄れる光
+        for (y = 0; y < 14; y++) { ctx.fillStyle = 'rgba(170,190,255,' + (0.09 * (1 - y / 14)).toFixed(3) + ')'; ctx.fillRect(x + 18 - y, 28 + y, 44 + y * 2, 1); }
+        lit.push(x);
+      }
+    }
+    // 床（リノリウム）。奥ほど暗い
+    ctx.fillStyle = '#0a0c21'; ctx.fillRect(0, SIDE_FLOOR, W, H - SIDE_FLOOR);
+    ctx.fillStyle = '#0d1027'; ctx.fillRect(0, SIDE_FLOOR + 8, W, H - SIDE_FLOOR - 8);
+    ctx.fillStyle = '#10132d'; ctx.fillRect(0, SIDE_FLOOR + 20, W, H - SIDE_FLOOR - 20);
+    // 床に映る蛍光灯（奥の床にぼんやり。速いほど横に伸びる）
+    var str = speed > 40 ? Math.min(28, Math.round((speed - 40) * 0.6)) : 0;
+    ctx.fillStyle = 'rgba(190,205,255,0.10)';
+    for (i = 0; i < lit.length; i++) ctx.fillRect(lit[i] + 20 - str, SIDE_FLOOR + 3, 40 + str, 2);
+    // 向かい側の窓から差す月明かり（手前の床。平行四辺形を行ごとに描く）
+    ctx.fillStyle = 'rgba(120,150,230,0.07)';
+    for (y = 164; y < H; y++) {
+      var kk = sideFloorK(y), mo = mod(kk * dist - 160 * (1 - kk), 160 * kk);
+      for (x = -mo - 160 * kk; x < W + 160; x += 160 * kk) ctx.fillRect(Math.round(x + 40 * kk), y, Math.round(64 * kk), 1);
+    }
+    // タイルの目地（奥は遅く、手前は速く。地面の行は障害物と同じ速さ）
+    ctx.fillStyle = '#1a1f44';
+    for (y = SIDE_FLOOR; y < H; y++) {
+      var k2 = sideFloorK(y), step = 40 * k2, so = mod(k2 * dist - 160 * (1 - k2), step);   // 消失点は画面中央 x=160
+      for (x = -so; x < W; x += step) ctx.fillRect(Math.round(x), y, 1, 1);
+    }
+    ctx.fillStyle = '#151a3a'; ctx.fillRect(0, 140, W, 1); ctx.fillRect(0, 151, W, 1); ctx.fillRect(0, 170, W, 1);
+    // 走る線（地面 y=160）をごく薄く
+    ctx.fillStyle = '#181d40'; ctx.fillRect(0, SIDE_GROUND, W, 1);
+    // 速いほど手前の床に光の筋
+    if (speed > 40) {
+      ctx.fillStyle = 'rgba(232,240,255,0.14)';
+      var ln = Math.min(36, Math.round((speed - 40) * 0.9)), to = mod(dist * 1.1, 40);
+      for (x = -to; x < W; x += 40) ctx.fillRect(Math.round(x + 6), 174, ln, 1);
+    }
+  }
+
+  // =====================================================================
   // 帰り道（R3）: 街灯の少ない暗い住宅街。3層パララックス＋道路。地面 y=150。
   // =====================================================================
   var GROUND_Y = 150;
@@ -636,6 +742,7 @@ window.AT = window.AT || {};
     world: {
       name: 'schoolCorridor',
       draw: drawWorld,          // (ctx, t, speed, {dist})
+      drawSide: drawSideWorld,  // 疾走用の横スクロール廊下 (ctx, dist(px), t, speed)
       reset: function () { world.pos = 0; world.lastT = null; },
       getDist: function () { return world.pos; }
     },
