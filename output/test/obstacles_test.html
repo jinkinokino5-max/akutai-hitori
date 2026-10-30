@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>art_obstacles テスト</title>
+<style>
+  body { margin: 0; padding: 16px; background: #0a0b1e; color: #e8f0ff; font-family: sans-serif; }
+  h2 { font-size: 14px; margin: 18px 0 6px; font-weight: normal; }
+  canvas { display: block; width: 100%; max-width: 960px; image-rendering: pixelated; background: #000; }
+  label { font-size: 13px; margin-right: 14px; white-space: nowrap; }
+  .ctl { margin: 6px 0; line-height: 2; }
+  input[type=range] { vertical-align: middle; width: 160px; }
+  .note { font-size: 12px; color: #a9c1f0; }
+</style>
+</head>
+<body>
+<div class="ctl">
+  ラウンド:
+  <label><input type="radio" name="rd" value="1" checked> R1 アルル</label>
+  <label><input type="radio" name="rd" value="2"> R2 合戦場</label>
+  <label><input type="radio" name="rd" value="3"> R3 廊下</label>
+  <label><input type="checkbox" id="bg" checked> 実際の背景</label>
+</div>
+
+<h2>A. 合成（背景＋闇＋乗り手＋障害物）</h2>
+<div class="ctl">
+  モード:
+  <label><input type="radio" name="md" value="demo" checked> デモ（自動で斬る/時々ぶつかる）</label>
+  <label><input type="radio" name="md" value="engulf"> 呑まれる</label>
+  <label><input type="radio" name="md" value="recede"> 闇が引く</label>
+  <label><input type="radio" name="md" value="bike"> 無人の自転車</label>
+</div>
+<div class="ctl">
+  <label>闇の幅 w <input id="w" type="range" min="0" max="1" step="0.005" value="0.18"> <span id="wv"></span></label>
+  <label>呑まれる p <input id="pe" type="range" min="0" max="1" step="0.01" value="0.5"> <span id="pev"></span></label>
+  <label>引く p <input id="pr" type="range" min="0" max="1" step="0.01" value="0.4"> <span id="prv"></span></label>
+  <label>無人自転車 p <input id="pb" type="range" min="0" max="1" step="0.01" value="0"> <span id="pbv"></span></label>
+  <label>speed01 <input id="sp" type="range" min="0" max="1" step="0.01" value="0.5"> <span id="spv"></span></label>
+  <label><input type="checkbox" id="auto"> p を自動で進める</label>
+</div>
+<canvas id="main" width="320" height="180"></canvas>
+<div class="note">デモ: 障害物が間合い（乗り手の前方）に入ると縁が光り、JUST/GOOD を交互に斬る。4つに1つはぶつかってよろける。闇の幅は w スライダー（0.33 で最も濃く荒い）。</div>
+
+<h2>B. 障害物（×2）: 上段=斬れる状態 / 中段=間合いの光 / 下段=斬られた後（cut p）</h2>
+<div class="ctl"><label>cut p <input id="pc" type="range" min="0" max="1" step="0.01" value="0.3"> <span id="pcv"></span></label>
+  <label><input type="checkbox" id="cutloop" checked> ループ</label></div>
+<canvas id="obs" width="160" height="110"></canvas>
+
+<h2>C. 乗り手（×2）: 走行 / 構え / 一閃(GOOD) / 一閃(JUST) / よろけ</h2>
+<canvas id="rider" width="320" height="56"></canvas>
+
+<script src="../src/art_common.js"></script>
+<script src="../src/art_r1.js"></script>
+<script src="../src/art_r2.js"></script>
+<script src="../src/art_r3.js"></script>
+<script src="../src/art_obstacles.js"></script>
+<script>
+  var OB = AT.ART.obstacles, px = AT.px;
+  var GROUND = { 1: 160, 2: 150, 3: 160 };      // scenes.js の runGround と同じ
+  var HERO_X = 110;
+  function $(id) { return document.getElementById(id); }
+  function ctx(id) { var c = $(id).getContext('2d'); c.imageSmoothingEnabled = false; return c; }
+  function radio(n) { return document.querySelector('input[name=' + n + ']:checked').value; }
+  var cm = ctx('main'), co = ctx('obs'), cr = ctx('rider');
+  try { if (AT.ART.r2.preload) AT.ART.r2.preload(); } catch (e) {}
+  OB.build();
+
+  // 背景
+  var dist = 0;
+  function drawBg(c, round, t, s01) {
+    var gy = GROUND[round];
+    if ($('bg').checked) {
+      try {
+        if (round === 1) AT.ART.r1.drawArles(c, dist, t, s01);
+        else if (round === 2) AT.ART.r2.drawWorld(c, dist, t, s01 * 100);
+        else AT.ART.r3.world.draw(c, t, s01 * 100, { dist: dist });
+        return;
+      } catch (e) { console.warn(e); }
+    }
+    c.fillStyle = '#1b2350'; c.fillRect(0, 0, 320, gy);
+    c.fillStyle = '#23253a'; c.fillRect(0, gy, 320, 180 - gy);
+  }
+
+  // デモ用の簡易な流れ（判定は slash_engine の担当。ここは見た目確認用の仮）
+  var obs = [], parts = [], nextSpawn = 0, count = 0, rider = { st: 'run', p: 0, dur: 0 }, hitStop = 0, flash = 0;
+  function spawn(round) {
+    var k = OB.KINDS[count % 3];
+    obs.push({ k: k, x: 330, cut: null, plan: (count % 4 === 3) ? 'crash' : (count % 2 ? 'JUST' : 'GOOD') });
+    count++;
+  }
+  function demoUpdate(dt, round, s01) {
+    var v = 60 + 220 * s01, gy = GROUND[round];
+    if (hitStop > 0) { hitStop -= dt; return; }
+    dist += v * dt;
+    nextSpawn -= dt;
+    if (nextSpawn <= 0) { spawn(round); nextSpawn = 0.9 + Math.random() * 0.6; }
+    if (rider.st !== 'run') { rider.p += dt / rider.dur; if (rider.p >= 1) { rider.st = 'run'; rider.p = 0; } }
+    obs.forEach(function (o) {
+      o.x -= v * dt;
+      var inf = OB.info(round, o.k), left = o.x + inf.hit.x, rel = left - HERO_X;
+      o.glow = (rel < 48 && rel > 16 && o.cut == null) ? 1 : 0;
+      if (o.cut != null) o.cut += dt / 0.6;
+      else if (o.plan === 'crash' && rel < 18) {
+        o.cut = 0; o.crashed = true; rider = { st: 'stagger', p: 0, dur: 0.5 };
+      } else if (o.plan !== 'crash' && rel < (o.plan === 'JUST' ? 44 : 32)) {
+        o.cut = 0; o.grade = o.plan;
+        rider = { st: 'slash', p: 0, dur: 0.25, just: o.plan === 'JUST' };
+        OB.burst(parts, round, o.k, o.x, gy, o.plan);
+        hitStop = o.plan === 'JUST' ? 0.06 : 0.03; flash = 1;
+      }
+    });
+    obs = obs.filter(function (o) { return o.x > -40 && !(o.cut != null && o.cut >= 1); });
+    OB.updateParticles(parts, dt, v);
+  }
+
+  var t0 = performance.now(), last = t0, lastRound = 1;
+  function frame(now) {
+    var t = (now - t0) / 1000, dt = Math.min(0.05, (now - last) / 1000); last = now;
+    var round = +radio('rd'), mode = radio('md'), s01 = +$('sp').value, gy = GROUND[round];
+    if (round !== lastRound) { obs = []; parts = []; lastRound = round; }
+    if ($('auto').checked) {
+      var id = mode === 'engulf' ? 'pe' : mode === 'recede' ? 'pr' : mode === 'bike' ? 'pb' : null;
+      if (id) { var dur = mode === 'engulf' ? 0.6 : mode === 'recede' ? 0.8 : 3.5; var el = $(id); el.value = ((+el.value + dt / dur) % 1.05).toFixed(3); }
+    }
+    ['w', 'pe', 'pr', 'pb', 'sp', 'pc'].forEach(function (k) { $(k + 'v').textContent = (+$(k).value).toFixed(2); });
+
+    // ---- A ----
+    if (mode === 'demo') demoUpdate(dt, round, s01); else dist += dt * 40;
+    drawBg(cm, round, t, mode === 'demo' ? s01 : 0.1);
+    if (mode === 'demo') {
+      obs.forEach(function (o) {
+        if (o.crashed) return;
+        OB.drawObstacle(cm, round, o.k, o.x, gy, { t: t, glow: o.glow, cut: o.cut });
+      });
+      OB.drawRider(cm, HERO_X, gy, rider.st, t, s01, rider.p, { round: round, just: rider.just });
+      OB.drawParticles(cm, parts);
+      OB.drawDark(cm, +$('w').value, t);
+      if (flash > 0) { OB.drawFlash(cm, flash); flash -= dt / 0.08; }
+    } else if (mode === 'engulf') {
+      OB.drawRider(cm, HERO_X, gy, 'run', t, s01, 0, { round: round });
+      OB.drawEngulf(cm, +$('pe').value, t, +$('w').value || 0.33);
+    } else if (mode === 'recede') {
+      OB.drawEmptyBike(cm, HERO_X, gy, 0);
+      OB.drawRecede(cm, +$('pr').value, t);
+    } else {
+      OB.drawEmptyBike(cm, HERO_X, gy, +$('pb').value);
+    }
+
+    // ---- B ---- 2倍表示（オフスクリーン 160×110 に描いて CSS で拡大）
+    co.fillStyle = '#1b2350'; co.fillRect(0, 0, 160, 110);
+    co.fillStyle = '#23253a';
+    [34, 70, 106].forEach(function (y) { co.fillRect(0, y, 160, 1); });
+    var pc = +$('pc').value;
+    if ($('cutloop').checked) { pc = (t % 1.2) / 1.0; if (pc > 1) pc = 1; $('pc').value = pc; }
+    OB.KINDS.forEach(function (k, i) {
+      var x = 8 + i * 50;
+      OB.drawObstacle(co, round, k, x, 34, { t: t });
+      OB.drawObstacle(co, round, k, x, 70, { t: t, glow: 1 });
+      OB.drawObstacle(co, round, k, x, 106, { t: t, cut: pc });
+    });
+
+    // ---- C ----
+    cr.fillStyle = '#1b2350'; cr.fillRect(0, 0, 320, 56);
+    cr.fillStyle = '#23253a'; cr.fillRect(0, 50, 320, 6);
+    var sp = (t % 0.6) / 0.35, st = (t % 1.0) / 0.6;
+    OB.drawRider(cr, 16, 50, 'run', t, s01, 0, { round: round });
+    OB.drawRider(cr, 74, 50, 'ready', t, s01, 0, { round: round });
+    OB.drawRider(cr, 130, 50, 'slash', t, s01, Math.min(1, sp), { round: round });
+    OB.drawRider(cr, 196, 50, 'slash', t, s01, Math.min(1, sp), { round: round, just: true });
+    OB.drawRider(cr, 278, 50, 'stagger', t, s01, Math.min(1, st), { round: round });
+    requestAnimationFrame(frame);
+  }
+  // B/C は 2 倍に見せる
+  $('obs').style.maxWidth = '640px';
+  $('rider').style.maxWidth = '960px';
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>
