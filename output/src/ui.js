@@ -6,7 +6,7 @@
   var CHAR_MS = 40;
 
   function init() {
-    ['debug', 'scene-name', 'mono', 'recall', 'shout', 'combo', 'judge', 'meter', 'ending', 'end-rank', 'end-line', 'end-stats', 'end-again', 'hint']
+    ['debug', 'scene-name', 'mono', 'recall', 'shout', 'combo', 'judge', 'meter', 'ending', 'end-rank', 'end-line', 'end-stats', 'end-again', 'hint', 'doom', 'credit']
       .forEach(function (id) { el[id] = document.getElementById(id); });
   }
 
@@ -75,7 +75,19 @@
     },
     shoutOff: function () { el.shout.classList.remove('on'); },
 
-    // 判定文字: result = 'perfect' | 'good' | 'miss'
+    // 呑まれたとき: 真っ黒な画面の大きな一言（mode 'big'）/ ゲームオーバーの結末文（mode 'end'。lines は配列）
+    doom: function (head, lines, mode) {
+      var d = el.doom;
+      d.innerHTML = '';
+      var h = document.createElement('div'); h.className = 'head'; h.textContent = head || ''; d.appendChild(h);
+      (lines || []).forEach(function (t) { var l = document.createElement('div'); l.className = 'ln'; l.textContent = t; d.appendChild(l); });
+      d.className = 'on ' + (mode || 'big');
+    },
+    doomOff: function () { el.doom.className = ''; el.doom.innerHTML = ''; },
+    // タイトル画面下部の音源クレジット（CC BY の表示義務。audio/CREDITS.md の画面表示用文）
+    credit: function (on) { el.credit.style.display = on ? 'block' : 'none'; },
+
+    // 判定文字: result = 'just' | 'good' | 'miss' | 'crash'（旧 'perfect' も可）
     judge: function (result) {
       var j = el.judge;
       j.textContent = result.toUpperCase();
@@ -109,7 +121,7 @@
 
     // シーン切替時に全部リセット
     reset: function () {
-      ui.sceneName(''); ui.hint(''); ui.monoOff(); ui.recallClear(); ui.shoutOff(); ui.judgeOff(); ui.meter(null); ui.ending(null);
+      ui.sceneName(''); ui.hint(''); ui.monoOff(); ui.recallClear(); ui.shoutOff(); ui.judgeOff(); ui.meter(null); ui.ending(null); ui.doomOff(); ui.credit(false);
     }
   };
 })(window.AT);

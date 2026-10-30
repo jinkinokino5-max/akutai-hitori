@@ -57,7 +57,8 @@
   /* 判定文字（レーンの判定線の上） */
   #judge { position: absolute; left: 44%; top: 70%; transform: translate(-50%, -50%); font-size: calc(var(--bw) * 0.045); opacity: 0; white-space: nowrap;
     color: #fff; -webkit-text-stroke: .07em var(--edge); paint-order: stroke fill; text-shadow: none; letter-spacing: .05em; }
-  #judge.perfect { color: #fff; -webkit-text-stroke-color: var(--mag); }
+  #judge.perfect, #judge.just { color: #fff; -webkit-text-stroke-color: var(--mag); }
+  #judge.crash { color: #ff5a6e; }
   #judge.good { color: var(--accent); }
   #judge.miss { color: #8a93b8; }
   #judge.pop { animation: pop .45s ease-out forwards; }
@@ -76,6 +77,14 @@
   #ending .rank { font-size: calc(var(--bw) * 0.07); color: #fff; -webkit-text-stroke: .07em var(--mag); paint-order: stroke fill; text-shadow: none; line-height: 1; }
   #ending .big { font-size: calc(var(--bw) * 0.028); line-height: 1.6; padding: .3em .6em; background: rgba(5,6,15,.55); border-radius: .3em; }
   #ending .small { font-size: calc(var(--bw) * 0.017); opacity: .9; white-space: pre-line; line-height: 1.6; background: rgba(5,6,15,.45); padding: .2em .6em; border-radius: .3em; }
+  /* 呑まれたとき: 真っ黒な画面に大きな一言(.big) / ゲームオーバーの結末文(.end) */
+  #doom { position: absolute; left: 6%; right: 6%; top: 50%; transform: translateY(-50%); text-align: center; display: none; }
+  #doom.on { display: block; }
+  #doom.big .head { font-size: calc(var(--bw) * 0.062); line-height: 1.4; color: #fff; text-shadow: 0 0 .3em rgba(255,46,136,.6); letter-spacing: .04em; }
+  #doom.end { top: 34%; }
+  #doom.end .head { font-size: calc(var(--bw) * 0.06); color: #fff; -webkit-text-stroke: .06em var(--mag); paint-order: stroke fill; text-shadow: none; margin-bottom: .5em; letter-spacing: .3em; }
+  #doom .ln { font-size: calc(var(--bw) * 0.026); line-height: 1.9; }
+  #credit { position: absolute; left: 2%; right: 2%; bottom: 2%; text-align: center; font-size: calc(var(--bw) * 0.0135); line-height: 1.5; opacity: .75; display: none; }
   #hint { position: absolute; left: 0; right: 0; bottom: 13%; text-align: center; font-size: calc(var(--bw) * 0.02); animation: blink 1.6s infinite; }
   @keyframes blink { 0%,60%,100% { opacity: .9; } 80% { opacity: .3; } }
   #rotate { display: none; }
@@ -97,25 +106,25 @@
   <div id="judge"></div>
   <div id="meter"><b>SPEED</b><i></i></div>
   <div id="ending"><div class="rank" id="end-rank"></div><div class="big" id="end-line"></div><div class="small" id="end-stats"></div><div class="small" id="end-again"></div></div>
+  <div id="doom"></div>
   <div id="hint"></div>
+  <div id="credit">Music: Funeral March for Queen Mary (H. Purcell) – Bablung Music, CC BY 3.0 https://creativecommons.org/licenses/by/3.0/ （Wikimedia Commons より。トリミング・音量調整あり）<br>Music: US Marine Band, Pro Musica Symphony ほか（PD）／ SFX: OpenGameArt ほか（CC0）</div>
 </div>
 <div id="rotate">横向きにすると大きく遊べます</div>
-<!-- クラシック script（ES modules は file:// で動かないため使わない）。読み込み順固定:
-     データ → core/input → 音(エンジン → 曲データ → 曲の橋渡し songs.js) → リズム → 絵(共通 → R1〜R3) → ui → scenes → main -->
+<!-- クラシック script（ES modules 不使用）。読み込み順固定:
+     データ → core/input → 音(audio_engine: 録音MP3を WebAudio で再生) → 疾走の判定(slash_engine) → 絵(共通 → R1〜R3 → 障害物) → ui → scenes → main
+     音は fetch で読むのでローカルサーバ / GitHub Pages で開くこと（file:// では無音） -->
 <script src="data/texts.js"></script>
 <script src="data/rounds.js"></script>
 <script src="src/core.js"></script>
 <script src="src/input.js"></script>
 <script src="src/audio_engine.js"></script>
-<script src="src/songs_tell.js"></script>
-<script src="src/songs_pomp.js"></script>
-<script src="src/songs_ode.js"></script>
-<script src="src/songs.js"></script>
-<script src="src/rhythm_engine.js"></script>
+<script src="src/slash_engine.js"></script>
 <script src="src/art_common.js"></script>
 <script src="src/art_r1.js"></script>
 <script src="src/art_r2.js"></script>
 <script src="src/art_r3.js"></script>
+<script src="src/art_obstacles.js"></script>
 <script src="src/ui.js"></script>
 <script src="src/scenes.js"></script>
 <script src="src/main.js"></script>
