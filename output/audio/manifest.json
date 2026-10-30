@@ -1,0 +1,188 @@
+{
+ "note": "path は output/ からの相対パス(例 output/audio/run_r1.mp3)。作成 2026-10-30。すべて未試聴(ffmpegの解析のみで決定)。形式 MP3 44.1kHz ステレオ 128kbps。src_start/src_end は原曲(原本ファイル)内の秒。",
+ "files": [
+  {
+   "id": "run_r1",
+   "path": "audio/run_r1.mp3",
+   "duration": 39.6,
+   "use": "run",
+   "label": "疾走R1(ウィリアム・テル 終結部の最後)",
+   "source": {
+    "track": "William Tell Overture / US Marine Band",
+    "src_start": 616.8,
+    "src_end": 656.4
+   },
+   "usage_note": "曲の終わりが山場。終わったら白光へ。先頭0.3秒フェードイン・末尾0.5秒フェードアウト済み",
+   "loudness": "-16 LUFS",
+   "loop": false
+  },
+  {
+   "id": "run_r2",
+   "path": "audio/run_r2.mp3",
+   "duration": 42.3,
+   "use": "run",
+   "label": "疾走R2(威風堂々1番 終結の大再現部)",
+   "source": {
+    "track": "Pomp and Circumstance No.1 / US Marine Band",
+    "src_start": 303.6,
+    "src_end": 345.9
+   },
+   "usage_note": "曲の終わりが山場。先頭0.3秒フェードイン・末尾0.5秒フェードアウト済み",
+   "loudness": "-16 LUFS",
+   "loop": false
+  },
+  {
+   "id": "run_r3",
+   "path": "audio/run_r3.mp3",
+   "duration": 39.5,
+   "use": "run",
+   "label": "疾走R3(第九 第2楽章スケルツォ 終結)",
+   "source": {
+    "track": "Beethoven Sym.9 mov.2 / Horenstein",
+    "src_start": 640.7,
+    "src_end": 680.2
+   },
+   "usage_note": "曲の終わりが山場。先頭0.3秒フェードイン・末尾0.5秒フェードアウト済み",
+   "loudness": "-16 LUFS",
+   "loop": false
+  },
+  {
+   "id": "recall_r1",
+   "path": "audio/recall_r1.mp3",
+   "duration": 30.0,
+   "use": "recall",
+   "label": "回顧R1(静かな区間)",
+   "source": {
+    "track": "William Tell Overture / US Marine Band",
+    "src_start": 283.0,
+    "src_end": 313.0
+   },
+   "usage_note": "ローパスでこもらせて使う。ループ可(端のラウドネス差0.2dB程度、先頭末尾0.3秒フェード)",
+   "loudness": "-22 LUFS",
+   "loop": true
+  },
+  {
+   "id": "recall_r2",
+   "path": "audio/recall_r2.mp3",
+   "duration": 30.0,
+   "use": "recall",
+   "label": "回顧R2(静かな区間)",
+   "source": {
+    "track": "Pomp and Circumstance No.1 / US Marine Band",
+    "src_start": 87.0,
+    "src_end": 117.0
+   },
+   "usage_note": "同上",
+   "loudness": "-22 LUFS",
+   "loop": true
+  },
+  {
+   "id": "recall_r3",
+   "path": "audio/recall_r3.mp3",
+   "duration": 30.0,
+   "use": "recall",
+   "label": "回顧R3(静かな区間)",
+   "source": {
+    "track": "Beethoven Sym.9 mov.2 / Horenstein",
+    "src_start": 379.0,
+    "src_end": 409.0
+   },
+   "usage_note": "同上(この曲の中では静かな部分。絶対値は他より大きい)",
+   "loudness": "-22 LUFS",
+   "loop": true
+  },
+  {
+   "id": "title",
+   "path": "audio/title.mp3",
+   "duration": 182.4,
+   "use": "bgm",
+   "label": "タイトル・結末",
+   "source": {
+    "track": "Funeral March for Queen Mary / Bablung Music",
+    "src_start": 0.0,
+    "src_end": 182.4
+   },
+   "usage_note": "タイトル・結末で使用。画面に CC BY のクレジット表示が必須",
+   "loudness": "-16 LUFS",
+   "loop": false
+  },
+  {
+   "id": "sfx_slash",
+   "path": "audio/sfx_slash.mp3",
+   "duration": 0.23,
+   "use": "sfx",
+   "label": "刀の風切り",
+   "source": {
+    "track": "RPG Sound Pack battle/swing.wav (HaelDB, CC0)"
+   },
+   "usage_note": "斬撃の瞬間",
+   "loudness": "ピーク-3dBFS",
+   "loop": false
+  },
+  {
+   "id": "sfx_hit",
+   "path": "audio/sfx_hit.mp3",
+   "duration": 0.6,
+   "use": "sfx",
+   "label": "斬った手応え",
+   "source": {
+    "track": "wood_impact/impactwood14 (qubodup系 ljudbank, CC0)"
+   },
+   "usage_note": "斬った手応え(木の衝撃音)",
+   "loudness": "ピーク-3dBFS",
+   "loop": false
+  },
+  {
+   "id": "sfx_crash",
+   "path": "audio/sfx_crash.mp3",
+   "duration": 0.58,
+   "use": "sfx",
+   "label": "衝突",
+   "source": {
+    "track": "Crash Collision (Luca Pixel, CC0)"
+   },
+   "usage_note": "障害物・闇への衝突",
+   "loudness": "ピーク-3dBFS",
+   "loop": false
+  },
+  {
+   "id": "sfx_dark_loop",
+   "path": "audio/sfx_dark_loop.mp3",
+   "duration": 18.0,
+   "use": "sfx_loop",
+   "label": "闇のざわめき(ループ)",
+   "source": {
+    "track": "atmoseerie01 (independent.nu ljudbank, CC0)"
+   },
+   "usage_note": "ループ再生。元20秒の末尾2秒を頭とクロスフェードして継ぎ目を消した18秒。MP3の先頭/末尾に約25msの無音が入るため、ループは短いクロスフェードで繋ぐと安全",
+   "loudness": "-26 LUFS",
+   "loop": true
+  },
+  {
+   "id": "sfx_bike_coast",
+   "path": "audio/sfx_bike_coast.mp3",
+   "duration": 1.16,
+   "use": "sfx",
+   "label": "自転車の惰性(スポークの回転音)",
+   "source": {
+    "track": "Bicycle Sounds bicycle_spokes-1 (CC0)"
+   },
+   "usage_note": "惰性の場面。1.16秒。繰り返す場合は重ねて再生",
+   "loudness": "ピーク-8dBFS",
+   "loop": false
+  },
+  {
+   "id": "sfx_flash",
+   "path": "audio/sfx_flash.mp3",
+   "duration": 3.0,
+   "use": "sfx",
+   "label": "白光",
+   "source": {
+    "track": "flash bang sound (CC0)"
+   },
+   "usage_note": "白光の瞬間。元6.4秒の先頭3秒、末尾1秒フェードアウト",
+   "loudness": "ピーク-3dBFS",
+   "loop": false
+  }
+ ]
+}

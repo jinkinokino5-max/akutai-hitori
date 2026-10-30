@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>悪態独り 音源確認</title>
+<style>
+body{font-family:sans-serif;background:#111;color:#eee;margin:0;padding:16px;max-width:760px}
+h1{font-size:18px}h2{font-size:15px;border-bottom:1px solid #444;padding-bottom:4px;margin-top:24px}
+.row{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap}
+button{background:#333;color:#eee;border:1px solid #666;border-radius:6px;padding:8px 12px;font-size:14px}
+button.on{background:#a33}.dim{color:#999;font-size:12px}
+.bar{height:36px;background:#222;border:1px solid #444;position:relative;width:100%;margin:4px 0}
+.bar canvas{width:100%;height:100%;display:block}.ph{position:absolute;top:0;bottom:0;width:2px;background:#f55}
+.note{background:#222;padding:8px;border-radius:6px;font-size:13px}
+</style></head><body>
+<h1>悪態独り 音源確認（すべて未試聴の候補）</h1>
+<p class="note">同じフォルダ構成（output/test/ から ../audio/ を読む）で開く。ローカルで file:// だと波形が出ないことがあるので、その場合は <code>python -m http.server</code> を output で起動して /test/audio_test.html を開く。再生はできる。</p>
+<h2>疾走曲（山場の終わりに向けて盛り上がるか）</h2>
+<p class="dim">波形は1秒ごとの音量。赤線が再生位置。「終盤5秒」ボタンで曲の終わり直前から聴ける。「白光つき」は終了時に sfx_flash を鳴らし、白光への繋がりを試せる。</p>
+<div id="run"></div>
+<h2>回顧用（静かな区間・ループ）</h2><div id="recall"></div>
+<h2>タイトル・結末</h2><div id="bgm"></div>
+<h2>効果音</h2><div id="sfx"></div>
+<script>
+var ITEMS=[
+["run_r1","疾走R1 ウィリアム・テル終結","run"],["run_r2","疾走R2 威風堂々1番","run"],["run_r3","疾走R3 第九 第2楽章","run"],
+["recall_r1","回顧R1","recall"],["recall_r2","回顧R2","recall"],["recall_r3","回顧R3","recall"],
+["title","タイトル・結末 パーセル(CC BY 3.0 Bablung Music)","bgm"],
+["sfx_slash","刀の風切り","sfx"],["sfx_hit","斬った手応え","sfx"],["sfx_crash","衝突","sfx"],["sfx_dark_loop","闇のざわめき(ループ)","sfx"],["sfx_bike_coast","自転車の惰性","sfx"],["sfx_flash","白光","sfx"]];
+var cur=null,flash=null;
+function fmt(t){return t.toFixed(1)+"s"}
+function stopAll(){document.querySelectorAll("audio").forEach(function(a){a.pause()});document.querySelectorAll("button.on").forEach(function(b){b.classList.remove("on")})}
+ITEMS.forEach(function(it){
+ var id=it[0],kind=it[2],box=document.getElementById(kind);
+ var d=document.createElement("div");d.className="rowwrap";
+ var a=new Audio("../audio/"+id+".mp3");a.preload="metadata";
+ var loop=(kind==="recall"||id==="sfx_dark_loop");a.loop=loop;
+ var row=document.createElement("div");row.className="row";
+ var btn=document.createElement("button");btn.textContent="再生";
+ var lab=document.createElement("span");lab.textContent=it[1];
+ var len=document.createElement("span");len.className="dim";len.textContent="…";
+ a.addEventListener("loadedmetadata",function(){len.textContent="長さ "+fmt(a.duration)+(loop?" (ループ)":"");draw()});
+ a.addEventListener("error",function(){len.textContent="読み込み失敗: "+id+".mp3"});
+ btn.onclick=function(){if(!a.paused){a.pause();btn.classList.remove("on");btn.textContent="再生";return}
+  document.querySelectorAll("audio").forEach(function(x){x.pause()});
+  a.currentTime=0;a.play();btn.classList.add("on");btn.textContent="停止"};
+ a.addEventListener("ended",function(){btn.classList.remove("on");btn.textContent="再生";if(kind==="run"&&withFlash.checked){var f=new Audio("../audio/sfx_flash.mp3");f.play()}});
+ row.appendChild(btn);row.appendChild(lab);row.appendChild(len);
+ if(kind==="run"){
+  var b2=document.createElement("button");b2.textContent="終盤5秒から";
+  b2.onclick=function(){document.querySelectorAll("audio").forEach(function(x){x.pause()});a.currentTime=Math.max(0,a.duration-5);a.play();btn.classList.add("on");btn.textContent="停止"};
+  row.appendChild(b2)}
+ d.appendChild(row);
+ if(kind!=="sfx"){
+  var bar=document.createElement("div");bar.className="bar";var cv=document.createElement("canvas");cv.width=720;cv.height=36;
+  var ph=document.createElement("div");ph.className="ph";bar.appendChild(cv);bar.appendChild(ph);d.appendChild(bar);
+  bar.onclick=function(e){var r=bar.getBoundingClientRect();a.currentTime=a.duration*(e.clientX-r.left)/r.width};
+  a.addEventListener("timeupdate",function(){ph.style.left=(a.currentTime/a.duration*100)+"%"});
+  function draw(){fetch("../audio/"+id+".mp3").then(function(r){return r.arrayBuffer()}).then(function(buf){
+    var ac=new (window.AudioContext||window.webkitAudioContext)();return ac.decodeAudioData(buf)}).then(function(ab){
+    var ch=ab.getChannelData(0),n=Math.floor(ab.duration),g=cv.getContext("2d"),w=cv.width/n;g.fillStyle="#6af";
+    for(var i=0;i<n;i++){var s=0,st=i*ab.sampleRate,e=Math.min(ch.length,st+ab.sampleRate);for(var j=st;j<e;j+=8)s+=ch[j]*ch[j];
+     var rms=Math.sqrt(s/((e-st)/8)),db=20*Math.log10(rms+1e-6),h=Math.max(1,(db+50)/50*cv.height);g.fillRect(i*w,cv.height-h,Math.max(1,w-1),h)}}).catch(function(){})}
+ } else {function draw(){}}
+ box.appendChild(d)});
+var wf=document.createElement("label");wf.innerHTML='<input type="checkbox" id="withFlash"> 疾走曲の再生が終わったら白光(sfx_flash)を鳴らす';
+document.getElementById("run").before(wf);var withFlash=document.getElementById("withFlash");
+</script></body></html>
