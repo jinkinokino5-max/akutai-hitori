@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>疾走(斬る)判定テスト</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; background: #0a0b1e; color: #e8f0ff; font: 14px/1.5 system-ui, sans-serif; }
+  body { padding: 8px 12px; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+  h1 { font-size: 15px; margin: 0 0 6px; }
+  #wrap { width: 100%; max-width: 960px; }
+  canvas { width: 100%; display: block; image-rendering: pixelated; background: #05060f; touch-action: none; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
+  a, button { background: #1b2350; color: #e8f0ff; border: 1px solid #3a4a8a; padding: 6px 10px; border-radius: 4px; font: inherit; text-decoration: none; }
+  small { color: #8a94c0; }
+  pre { background: #05060f; padding: 6px; font-size: 12px; overflow: auto; max-width: 960px; margin: 6px 0; }
+</style>
+</head>
+<body>
+<h1>疾走(斬る)判定テスト（slash_engine.js・絵なし）</h1>
+<div id="wrap">
+  <canvas id="cv" width="320" height="180"></canvas>
+  <div class="row">
+    <a href="?round=1">R1</a><a href="?round=2">R2</a><a href="?round=3">R3</a>
+    <a id="dbg" href="#">debug切替</a>
+    <small>タップ / クリック / Space で斬る。障害物が刀の先(明るい帯)に入った瞬間が JUST。</small>
+  </div>
+  <pre id="info" hidden></pre>
+</div>
+<script src="../src/slash_engine.js"></script>
+<script>
+(function () {
+  var AT = window.AT, S = AT.slash, C = S.config;
+  var q = location.search;
+  var round = Math.max(1, Math.min(3, parseInt((q.match(/[?&]round=(\d)/) || [0, 1])[1], 10) || 1)) - 1;
+  var debug = /[?&]debug\b/.test(q);
+  var dbgLink = document.getElementById('dbg');
+  dbgLink.href = debug ? q.replace(/[?&]debug\b/, '').replace(/^&/, '?') || location.pathname : q + (q ? '&' : '?') + 'debug';
+  var info = document.getElementById('info'); info.hidden = !debug;
+  var cv = document.getElementById('cv'), g = cv.getContext('2d');
+  var W = C.W, H = 180, GROUND = 140;
+  var KIND = { a: { w: 9, h: 14, c: '#8a6a3a' }, b: { w: 14, h: 9, c: '#5fa86a' }, c: { w: 7, h: 22, c: '#c8c0e0' } };
+  var flash = null, swing = 0, sparks = [], seed = 1, phase = 'ready', endResult = null, last = 0, shake = 0;
+
+  function begin() { seed = (Math.random() * 1e9) | 0; S.start(round, { seed: seed }); phase = 'play'; endResult = null; sparks = []; flash = null; }
+  function say(t, c) { flash = { t: t, c: c, life: 0.6 }; }
+
+  S.on('just', function (e) { say('JUST x' + e.combo, '#f5d33a'); burst(e.x, 12, '#f5d33a'); swing = 0.12; });
+  S.on('good', function (e) { say('GOOD x' + e.combo, '#3dff8a'); burst(e.x, 6, '#3dff8a'); swing = 0.12; });
+  S.on('miss', function () { say('空振り', '#8a94c0'); swing = 0.12; });
+  S.on('crash', function () { say('衝突!', '#ff2e88'); shake = 0.25; });
+  S.on('comboUp', function (e) { say('COMBO ' + e.combo + ' (x' + e.mul.toFixed(1) + ')', '#ffb347'); });
+  S.on('swallow', function () { say('呑まれた', '#ff2e88'); });
+  S.on('end', function (e) { phase = 'end'; endResult = e.result; });
+
+  function burst(x, n, col) { for (var i = 0; i < n; i++) sparks.push({ x: x, y: GROUND - 8, vx: (Math.random() - 0.3) * 120, vy: -Math.random() * 110, life: 0.5, c: col }); }
+
+  function act() {
+    if (phase === 'ready' || phase === 'end') { begin(); return; }
+    S.slash();
+  }
+  window.addEventListener('keydown', function (e) { if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || /^F\d+$/.test(e.key)) return; e.preventDefault(); act(); });
+  cv.addEventListener('pointerdown', function (e) { e.preventDefault(); act(); }, { passive: false });
+
+  function draw() {
+    var dx = shake > 0 ? (Math.random() - 0.5) * 4 : 0;
+    g.setTransform(1, 0, 0, 1, dx, 0);
+    g.fillStyle = '#0a0b1e'; g.fillRect(-4, 0, W + 8, H);
+    g.fillStyle = '#1b2350'; g.fillRect(-4, GROUND, W + 8, H - GROUND);
+    // 流れる地面の目印
+    g.fillStyle = '#2c3a78';
+    var off = (S.distance || 0) % 32;
+    for (var gx = -off; gx < W; gx += 32) g.fillRect(gx, GROUND + 6, 14, 2);
+
+    // 刀の間合い（デバッグ時のみ帯を出す。常に出すと答えが見えるので薄く）
+    var tip = C.bikeX + C.reach;
+    g.fillStyle = debug ? 'rgba(61,255,138,0.25)' : 'rgba(255,255,255,0.05)';
+    g.fillRect(C.bikeX + C.bodyX, GROUND - 26, C.reach - C.bodyX, 26);
+    g.fillStyle = debug ? 'rgba(245,211,58,0.45)' : 'rgba(245,211,58,0.12)';
+    g.fillRect(tip - C.justWidth, GROUND - 26, C.justWidth, 26);
+
+    // 障害物
+    for (var i = 0; i < S.obstacles.length; i++) {
+      var o = S.obstacles[i], k = KIND[o.kind];
+      g.fillStyle = k.c; g.fillRect(Math.round(o.x), GROUND - k.h, k.w, k.h);
+    }
+    // 自転車(矩形)
+    var stun = S.stunned > 0;
+    g.fillStyle = stun ? '#ff2e88' : '#ffb347';
+    g.fillRect(C.bikeX - 14, GROUND - 14 + (stun ? -3 : 0), 18, 14);
+    g.fillStyle = '#e8f0ff'; g.fillRect(C.bikeX - 4, GROUND - 26, 6, 12);
+    if (swing > 0) { g.fillStyle = '#e8f0ff'; g.fillRect(C.bikeX + 2, GROUND - 20, C.reach, 2); }
+    if (S.cooldown > 0) { g.fillStyle = '#8a94c0'; g.fillRect(C.bikeX - 14, GROUND + 2, 18 * S.cooldown / C.whiffCooldown, 2); }
+
+    // 破片
+    for (i = 0; i < sparks.length; i++) { g.fillStyle = sparks[i].c; g.fillRect(sparks[i].x, sparks[i].y, 2, 2); }
+
+    // 闇（左から。近づくほど濃く）
+    var dw = S.dark * W, near = Math.min(1, S.dark / C.darkLimit);
+    g.fillStyle = 'rgba(0,0,0,' + (0.55 + 0.4 * near).toFixed(2) + ')'; g.fillRect(-4, 0, dw, H);
+    g.fillStyle = 'rgba(40,0,60,0.5)';
+    for (var y = 0; y < H; y += 6) g.fillRect(dw, y, 4 + 3 * Math.sin(S.time * 6 + y), 6);
+    if (debug) { g.fillStyle = '#ff2e88'; g.fillRect(C.darkLimit * W, 0, 1, H); }
+
+    // HUD
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.fillStyle = '#05060f'; g.fillRect(W - 84, 6, 78, 8);
+    g.fillStyle = '#ffb347'; g.fillRect(W - 83, 7, 76 * S.speed / 100, 6);
+    g.fillStyle = '#e8f0ff'; g.font = '8px monospace'; g.textBaseline = 'top';
+    g.fillText('SPEED ' + Math.round(S.speed), W - 84, 16);
+    g.fillText('COMBO ' + S.combo, W - 84, 26);
+    g.fillText('TIME ' + Math.max(0, C.duration - S.time).toFixed(0), W - 84, 36);
+    if (flash) { g.fillStyle = flash.c; g.font = '12px monospace'; g.textAlign = 'center'; g.fillText(flash.t, C.bikeX + 20, 60 - (0.6 - flash.life) * 20); g.textAlign = 'left'; }
+    g.fillStyle = '#e8f0ff'; g.font = '10px monospace'; g.textAlign = 'center';
+    if (phase === 'ready') g.fillText('R' + (round + 1) + '  タップで開始', W / 2, 80);
+    if (phase === 'end' && endResult) {
+      g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillRect(40, 50, W - 80, 80);
+      g.fillStyle = endResult.escaped ? '#f5d33a' : '#ff2e88';
+      g.fillText(endResult.escaped ? '逃げ切り!' : '呑まれた (' + endResult.time.toFixed(1) + '秒)', W / 2, 58);
+      g.fillStyle = '#e8f0ff'; g.font = '8px monospace';
+      g.fillText('斬 ' + endResult.slashed + ' (JUST ' + endResult.just + ') 衝突 ' + endResult.crashes + ' 空振 ' + endResult.whiffs, W / 2, 76);
+      g.fillText('最大コンボ ' + endResult.maxCombo + '  闇との平均距離 ' + endResult.avgDist.toFixed(2), W / 2, 90);
+      g.fillText('得点 ' + endResult.score.toFixed(0) + '   タップで再開', W / 2, 108);
+    }
+    g.textAlign = 'left';
+  }
+
+  function frame(t) {
+    var dt = last ? Math.min(0.05, (t - last) / 1000) : 0; last = t;
+    if (phase === 'play') S.update(dt);
+    swing = Math.max(0, swing - dt); shake = Math.max(0, shake - dt);
+    if (flash) { flash.life -= dt; if (flash.life <= 0) flash = null; }
+    for (var i = sparks.length - 1; i >= 0; i--) { var p = sparks[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; p.life -= dt; if (p.life <= 0) sparks.splice(i, 1); }
+    draw();
+    if (debug) {
+      var o0 = S.obstacles[0];
+      info.textContent = 'status=' + S.status + ' t=' + S.time.toFixed(1) + ' speed=' + S.speed.toFixed(1) + ' dark=' + S.dark.toFixed(3) + '/' + C.darkLimit.toFixed(3) +
+        ' combo=' + S.combo + ' scroll=' + S.scroll.toFixed(0) + ' cd=' + S.cooldown.toFixed(2) + ' stun=' + S.stunned.toFixed(2) +
+        '\nobs=' + S.obstacles.length + (o0 ? ' next(d)=' + (o0.x - C.bikeX).toFixed(0) : '') + ' seed=' + seed + '\nstats=' + JSON.stringify(S.stats);
+    }
+    requestAnimationFrame(frame);
+  }
+  S.status = 'idle'; S.stats = null;
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
