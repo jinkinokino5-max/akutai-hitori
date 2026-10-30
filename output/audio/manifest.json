@@ -4,13 +4,13 @@
   {
    "id": "run_r1",
    "path": "audio/run_r1.mp3",
-   "duration": 39.6,
+   "duration": 40.0,
    "use": "run",
-   "label": "疾走R1(ウィリアム・テル 終結部の最後)",
+   "label": "疾走R1(ウィリアム・テル フィナーレのファンファーレから)",
    "source": {
     "track": "William Tell Overture / US Marine Band",
-    "src_start": 616.8,
-    "src_end": 656.4
+    "src_start": 452.6,
+    "src_end": 492.6
    },
    "usage_note": "曲の終わりが山場。終わったら白光へ。先頭0.3秒フェードイン・末尾0.5秒フェードアウト済み",
    "loudness": "-16 LUFS",
@@ -94,13 +94,13 @@
   {
    "id": "title",
    "path": "audio/title.mp3",
-   "duration": 182.4,
+   "duration": 177.6,
    "use": "bgm",
    "label": "タイトル・結末",
    "source": {
     "track": "Funeral March for Queen Mary / Bablung Music",
-    "src_start": 0.0,
-    "src_end": 182.4
+    "src_start": 4.9,
+    "src_end": 182.5
    },
    "usage_note": "タイトル・結末で使用。画面に CC BY のクレジット表示が必須",
    "loudness": "-16 LUFS",

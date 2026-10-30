@@ -19,7 +19,7 @@ https://creativecommons.org/licenses/by/3.0/ （Wikimedia Commons より。ト�
 - 演奏: Bablung Music（トランペット3・バルブトロンボーン→ユーフォニアム3・チューバ、タブラ等の編曲）
 - 入手: https://commons.wikimedia.org/wiki/File:Funeral_March_for_Queen_Mary_-_H._Purcell.opus （出典 YouTube 9ZSBTWC8UgY）
 - ライセンス: **CC BY 3.0**（YouTube CC-BY 表示。Commons で LicenseReview 付き）。クレジット表示必須。確度: ○（表示義務を守れば可）
-- 切り出し: 0〜182.4秒（ほぼ全体。原本 182.5秒）。加工: opus→MP3、loudnorm -16 LUFS、先頭0.3秒フェードイン・末尾1.0秒フェードアウト。改変の旨は上のクレジット文に記載。
+- 切り出し: 4.9〜182.5秒（原本の頭に約5秒の無音があるため削除。2026-10-30 変更。旧版は archive/音源_旧版/）。加工: opus→MP3、loudnorm -16 LUFS、先頭0.3秒フェードイン・末尾1.0秒フェードアウト。改変の旨は上のクレジット文に記載。
 
 ### run_r1.mp3 / recall_r1.mp3（R1）
 - 曲名: ウィリアム・テル序曲（ロッシーニ作曲、ヴェンツェル・ゼードラク編 吹奏楽版）
@@ -27,7 +27,8 @@ https://creativecommons.org/licenses/by/3.0/ （Wikimedia Commons より。ト�
 - 入手: https://commons.wikimedia.org/wiki/File:Gioachino_Rossini,_William_Tell_Overture_(military_band_version,_2000).ogg （原典 marineband.usmc.mil）
 - ライセンス: PD（米国政府著作物 PD-USGov-Military-Marines ＋ 作曲者没後100年超）。確度: ◎
 - 原本の長さ 662秒。Commons 説明では「Ranz des Vaches 5:14、フィナーレ 7:30」。
-- **run_r1**: 切り出し **616.8〜656.4秒**（39.6秒）。フィナーレ（スイス軍の行進、450秒〜）の最後の約40秒で、曲の終わり（最終和音の減衰、656.4秒付近）で終わる。
+- **run_r1**: 切り出し **452.6〜492.6秒**（40.0秒）。フィナーレ（スイス軍の行進）の冒頭のトランペットのファンファーレから連続で40秒（2026-10-30 ユーザー指定で変更。開始点は1秒RMSの立ち上がり 453秒付近から推定、未試聴）。代案 `run_r1_alt.mp3`（452.6〜484.1秒＋終結部 646.4〜656.4秒を0.5秒クロスフェードでつないだ40.98秒）。旧版は archive/音源_旧版/ に退避。
+  - 以下の「根拠」「開始点」の記述は旧版（616.8〜656.4秒）のもの。
   - 根拠: 1秒RMSで 585〜655秒が全曲で最もエネルギーが高い連続区間（約 -29〜-33 dB、平均 -30 dB。序盤〜中盤は -37〜-45 dB）。開始点は 616.8秒の局所的な谷（-36 dB、前後より低い=フレーズの切れ目と推定）を採用。
 - **recall_r1**: 切り出し **283〜313秒**（30秒）。全曲で30秒窓の「ラウドネス平均＋ばらつき」が最小（平均 -42.3 dB、標準偏差 1.8 dB、先頭5秒と末尾5秒の差 0.2 dB=ループしやすい）。位置は Ranz des Vaches（5:14=314秒）の直前の静かな導入部のあたり。
 - 加工: ogg→MP3、loudnorm（run=-16 / recall=-22 LUFS, TP -1.5）、run は先頭0.3秒フェードイン・末尾0.5秒フェードアウト、recall は先頭末尾0.3秒フェード。
