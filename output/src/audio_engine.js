@@ -7,7 +7,7 @@
 //     効果音の同時発音・クロスフェード・ローパス・ループ点指定が一つの仕組みで済む。
 //   - 読み込み時には AudioContext を作らない（Chrome が「ユーザー操作前の AudioContext」を警告するため）。
 //     起動時は prefetch() で MP3 のバイト列だけ取っておき、最初のタップ(resume)で decode する。
-//   - 相対パス（audio/xxx.mp3）。ローカルサーバ・GitHub Pages 前提（file:// は fetch できないので無音）。
+//   - 相対パス（audio/xxx.mp3）。file:// で開いたときは audio/audio_data.js（base64、tools/make_audio_data.py で生成）から読む。
 //   - 長い曲は decode 後に 1 秒あたり約 0.35MB（44.1kHz ステレオ float32）を使うので、
 //     使い終わった曲は release(id) で捨てる（バイト列は残すので再 decode できる）。
 //
@@ -44,12 +44,35 @@ window.AT = window.AT || {};
   var A = { FILES: FILES, SFX_VOL: SFX_VOL };
 
   // ---------- 読み込み ----------
+  // file:// では fetch できないので、予備の audio/audio_data.js（base64）を読み込んでそこから取る
+  var dataLoad = null;
+  function loadEmbedded() {
+    if (!dataLoad) dataLoad = new Promise(function (res, rej) {
+      if (AT.AUDIO_DATA) return res(AT.AUDIO_DATA);
+      var sc = document.createElement('script');
+      sc.src = BASE + 'audio_data.js';
+      sc.onload = function () { AT.AUDIO_DATA ? res(AT.AUDIO_DATA) : rej(new Error('audio_data.js が空')); };
+      sc.onerror = function () { rej(new Error('audio_data.js を読めない')); };
+      document.head.appendChild(sc);
+    });
+    return dataLoad;
+  }
+  function embeddedBytes(id) {
+    return loadEmbedded().then(function (d) {
+      if (!d[id]) throw new Error('埋め込みに無い ' + id);
+      var bin = atob(d[id]), u8 = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      return u8.buffer;
+    });
+  }
   function fetchBytes(id) {
     if (!bytes[id]) {
-      bytes[id] = fetch(BASE + id + '.mp3').then(function (r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + id);
-        return r.arrayBuffer();
-      });
+      var viaFetch = location.protocol === 'file:' ? Promise.reject(new Error('file://')) :
+        fetch(BASE + id + '.mp3').then(function (r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + id);
+          return r.arrayBuffer();
+        });
+      bytes[id] = viaFetch.catch(function () { return embeddedBytes(id); });
       bytes[id].catch(function (e) { console.warn('[audio] 読み込み失敗', id, e); delete bytes[id]; });
     }
     return bytes[id];
